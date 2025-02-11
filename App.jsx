@@ -1,154 +1,85 @@
-import React, { useState } from 'react';
-import './App.css';
+import { useState } from "react";
+import "./App.css";
 
-const App = () => {
-  const totalSeats = 50;
-  const [seatsLeft, setSeatsLeft] = useState(totalSeats);
+const TOTAL_SEATS = 20;
+
+export default function App() {
+  const [seatsLeft, setSeatsLeft] = useState(TOTAL_SEATS);
   const [reservations, setReservations] = useState([]);
-  const [formData, setFormData] = useState({ name: '', phone: '', guestCount: '' });
-  const [error, setError] = useState('');
+  const [form, setForm] = useState({ name: "", phone: "", guests: "" });
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prevData) => ({ ...prevData, [name]: value }));
+    setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const validateForm = () => {
-    if (!formData.name || !formData.phone || !formData.guestCount) {
-      setError('All fields are required.');
-      return false;
+  const handleReserve = () => {
+    const guests = parseInt(form.guests, 10);
+    if (!form.name || !form.phone || isNaN(guests) || guests <= 0) {
+      alert("Please enter valid details.");
+      return;
     }
-
-    if (parseInt(formData.guestCount) > seatsLeft) {
-      setError('Not enough seats available.');
-      return false;
+    if (guests > seatsLeft) {
+      alert("Not enough seats available!");
+      return;
     }
-
-    if (reservations.some((res) => res.name === formData.name)) {
-      setError('Name already exists. Please choose a unique name.');
-      return false;
+    if (reservations.some(res => res.name === form.name)) {
+      alert("Duplicate name detected!");
+      return;
     }
-
-    setError('');
-    return true;
+    setReservations([...reservations, { ...form, guests, checkIn: new Date().toLocaleTimeString(), checkOut: null }]);
+    setSeatsLeft(seatsLeft - guests);
+    setForm({ name: "", phone: "", guests: "" });
   };
 
-  const handleReservation = (e) => {
-    e.preventDefault();
-    if (!validateForm()) return;
-
-    const newReservation = {
-      id: Math.random(),
-      ...formData,
-      guestCount: parseInt(formData.guestCount),
-      checkInTime: new Date().toLocaleString(),
-      checkOutTime: null,
-    };
-
-    setReservations([...reservations, newReservation]);
-    setSeatsLeft(seatsLeft - newReservation.guestCount);
-    setFormData({ name: '', phone: '', guestCount: '' });
-  };
-
-  const handleCheckout = (id) => {
-    const updatedReservations = reservations.map((reservation) =>
-      reservation.id === id
-        ? { ...reservation, checkOutTime: new Date().toLocaleString() }
-        : reservation
-    );
-
+  const handleCheckout = (index) => {
+    const updatedReservations = [...reservations];
+    updatedReservations[index].checkOut = new Date().toLocaleTimeString();
     setReservations(updatedReservations);
-    const checkedOutReservation = reservations.find((res) => res.id === id);
-    setSeatsLeft(seatsLeft + checkedOutReservation.guestCount);
+    setSeatsLeft(seatsLeft + updatedReservations[index].guests);
   };
 
-  const handleDelete = (id) => {
-    const updatedReservations = reservations.filter((res) => res.id !== id);
-    const deletedReservation = reservations.find((res) => res.id === id);
-    setReservations(updatedReservations);
-    setSeatsLeft(seatsLeft + deletedReservation.guestCount);
+  const handleDelete = (index) => {
+    const res = reservations[index];
+    if (!res.checkOut) {
+      setSeatsLeft(seatsLeft + res.guests);
+    }
+    setReservations(reservations.filter((_, i) => i !== index));
   };
 
   return (
-    <div className="app">
-      <h1>Restaurant Reservation System</h1>
-      <div className="reservation-form">
-        <h2>Make a Reservation</h2>
-        <form onSubmit={handleReservation}>
-          <div>
-            <label>Name</label>
-            <input
-              type="text"
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-            />
-          </div>
-          <div>
-            <label>Phone</label>
-            <input
-              type="text"
-              name="phone"
-              value={formData.phone}
-              onChange={handleChange}
-            />
-          </div>
-          <div>
-            <label>Guest Count</label>
-            <input
-              type="number"
-              name="guestCount"
-              value={formData.guestCount}
-              onChange={handleChange}
-            />
-          </div>
-          <button type="submit">Reserve</button>
-        </form>
-        {error && <p className="error">{error}</p>}
+    <div className="container">
+      <h1>Restaurant Reservation</h1>
+      <p>Seats Left: {seatsLeft}/{TOTAL_SEATS}</p>
+      <div className="form-container">
+        <input name="name" placeholder="Name" value={form.name} onChange={handleChange} />
+        <input name="phone" placeholder="Phone" value={form.phone} onChange={handleChange} />
+        <input name="guests" placeholder="Guests" type="number" value={form.guests} onChange={handleChange} />
+        <button onClick={handleReserve}>Reserve</button>
       </div>
-
-      <div className="seats-info">
-        <h3>Seats Left: {seatsLeft}</h3>
-      </div>
-
-      <div className="reservation-table">
-        <h2>Reservations</h2>
-        <table>
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Phone</th>
-              <th>Check-in Time</th>
-              <th>Check-out Time</th>
-              <th>Actions</th>
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Phone</th>
+            <th>Guests</th>
+            <th>Check-in</th>
+            <th>Check-out</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {reservations.map((res, index) => (
+            <tr key={index}>
+              <td>{res.name}</td>
+              <td>{res.phone}</td>
+              <td>{res.guests}</td>
+              <td>{res.checkIn}</td>
+              <td>{res.checkOut || <button onClick={() => handleCheckout(index)}>Click to Checkout</button>}</td>
+              <td><button onClick={() => handleDelete(index)}>Delete</button></td>
             </tr>
-          </thead>
-          <tbody>
-            {reservations.map((reservation) => (
-              <tr key={reservation.id}>
-                <td>{reservation.name}</td>
-                <td>{reservation.phone}</td>
-                <td>{reservation.checkInTime}</td>
-                <td>{reservation.checkOutTime || 'Not Checked Out'}</td>
-                <td>
-                  {reservation.checkOutTime ? (
-                    <button disabled>Checked Out</button>
-                  ) : (
-                    <button onClick={() => handleCheckout(reservation.id)}>
-                      Checkout
-                    </button>
-                  )}
-                  <button onClick={() => handleDelete(reservation.id)}>
-                    Delete
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
-};
-
-export default App;
+}
